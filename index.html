@@ -198,7 +198,7 @@ const S = {
   catalogue: [], selection: [],
   vue: 'accueil', precedente: 'accueil', ficheId: null,
   cat: 'Série', recherche: '', genre: '', triCat: 'recent',
-  filtreSel: 'Tout', triSel: 'sortie', vueSel: 'liste',
+  filtreSel: 'Tout', catSel: 'Tout', triSel: 'sortie', vueSel: 'liste',
   defilement: {}, connecte: false, compte: null, fichier: '', chargementSel: false, erreurConnexion: ''
 };
 const CATEGORIES = [['Série', 'Séries'], ['Docu', 'Docus'], ['Film', 'Films'], ['Enfant', 'Enfants']];
@@ -706,8 +706,10 @@ function vueSelection() {
     </main>`;
   }
   const filtres = ['Tout', 'En cours', 'À voir', 'À jour', 'Terminée', 'Abandonnée'];
-  const compte = f => f === 'Tout' ? S.selection.length : S.selection.filter(s => s.statut === f).length;
   let lignes = S.selection.map(s => ({ s, t: parId(s.id) })).filter(x => x.t);
+  if (S.catSel !== 'Tout') lignes = lignes.filter(x => x.t.categorie === S.catSel);
+  const base = lignes;
+  const compte = f => f === 'Tout' ? base.length : base.filter(x => x.s.statut === f).length;
   if (S.filtreSel !== 'Tout') lignes = lignes.filter(x => x.s.statut === S.filtreSel);
   const tris = {
     ajout: (a, b) => String(b.s.ajoute).localeCompare(String(a.s.ajoute)),
@@ -721,7 +723,7 @@ function vueSelection() {
   const options = [['ajout', "Date d'ajout"], ['titre', 'Titre'], ['note', 'Ma note'], ['statut', 'Mon statut'], ['categorie', 'Catégorie'], ['sortie', 'Date de sortie']];
 
   const contenu = !lignes.length
-    ? `<p class="vide">${S.selection.length ? 'Aucun titre avec ce statut.' : 'Sélection vide. Ajouter des titres depuis le catalogue avec le bouton +.'}</p>`
+    ? `<p class="vide">${S.selection.length ? 'Aucun titre avec ces filtres.' : 'Sélection vide. Ajouter des titres depuis le catalogue avec le bouton +.'}</p>`
     : S.vueSel === 'grille'
       ? `<div class="grille" style="margin-top:4px">${lignes.map(({ t }) => `<button data-action="fiche" data-id="${esc(t.id)}">${affiche(t)}<span class="serif">${esc(t.titre)}</span></button>`).join('')}</div>`
       : `<div class="liste" style="margin-top:-18px">${lignes.map(({ s, t }) => {
@@ -744,8 +746,11 @@ function vueSelection() {
       <h1 class="titre-ecran serif">Ma Sélection</h1>
       <span class="serif" style="font-size:22px;color:var(--doux)">${S.selection.length}</span>
     </div>
+    <div class="segments" role="tablist" aria-label="Catégories" style="grid-template-columns:repeat(5,minmax(0,1fr))">
+      ${[['Tout', 'Tout']].concat(CATEGORIES).map(([c, l]) => `<button role="tab" aria-selected="${c === S.catSel}" class="${c === S.catSel ? 'actif' : ''}" data-action="cat-sel" data-cat="${c}">${l}</button>`).join('')}
+    </div>
     <div class="puces">
-      ${filtres.filter(f => f === 'Tout' || compte(f)).map(f => `<button class="puce ${S.filtreSel === f ? 'actif' : ''}" data-action="filtre-sel" data-filtre="${f}">${f}${f !== 'Tout' ? ' · ' + compte(f) : ''}</button>`).join('')}
+      ${filtres.filter(f => f === 'Tout' || compte(f) || S.filtreSel === f).map(f => `<button class="puce ${S.filtreSel === f ? 'actif' : ''}" data-action="filtre-sel" data-filtre="${f}">${f}${f !== 'Tout' ? ' · ' + compte(f) : ''}</button>`).join('')}
     </div>
     <div class="outils">
       <label class="tri">
@@ -833,6 +838,7 @@ document.addEventListener('click', e => {
   else if (a === 'genre') { S.genre = el.dataset.genre; rendre(); }
   else if (a === 'tri-cat') { S.triCat = S.triCat === 'ancien' ? 'recent' : 'ancien'; rendre(); }
   else if (a === 'filtre-sel') { S.filtreSel = el.dataset.filtre; rendre(); }
+  else if (a === 'cat-sel') { S.catSel = el.dataset.cat; rendre(); }
   else if (a === 'vue-sel') { S.vueSel = el.dataset.v; rendre(); }
   else if (a === 'statut' && s) {
     const champs = { statut: el.dataset.statut };

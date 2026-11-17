@@ -164,6 +164,11 @@ textarea.notes:focus { border-color: var(--accent); }
 .onglets button svg { width: 22px; height: 22px; }
 .onglets button.actif { color: var(--encre); border-top-color: var(--accent); }
 
+/* Bouton « haut de page » */
+.haut { position: fixed; right: max(16px, calc(50% - 244px)); bottom: calc(92px + env(safe-area-inset-bottom)); width: 48px; height: 48px; border: 1px solid var(--encre); background: var(--fond); color: var(--encre); display: flex; align-items: center; justify-content: center; padding: 0; z-index: 6; opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .2s, transform .2s; }
+.haut.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.haut svg { width: 20px; height: 20px; }
+
 /* Message bref */
 .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); background: var(--encre); color: var(--sur-encre); padding: 12px 18px; font-size: 13px; max-width: calc(100% - 40px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 10; }
 .toast.visible { opacity: 1; transform: translate(-50%, 0); }
@@ -190,6 +195,9 @@ textarea.notes:focus { border-color: var(--accent); }
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>Sélection</button>
   </div>
 </nav>
+<button class="haut" id="haut" aria-label="Remonter en haut de la page" data-action="haut" tabindex="-1">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/></svg>
+</button>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -475,6 +483,7 @@ function rendre() {
   const vues = { accueil: vueAccueil, catalogue: vueCatalogue, fiche: vueFiche, selection: vueSelection };
   if (!S.catalogue.length) return;
   app.innerHTML = vues[S.vue]();
+  setTimeout(majBoutonHaut, 0);
   document.getElementById('onglets').hidden = S.vue === 'fiche';
   document.querySelectorAll('.onglets button').forEach(b => {
     const actif = b.dataset.vue === S.vue;
@@ -827,7 +836,9 @@ document.addEventListener('click', e => {
   const s = suiviDe(S.ficheId);
   const t = parId(S.ficheId);
 
-  if (a === 'aller') aller(el.dataset.vue);
+  if (a === 'haut') window.scrollTo({ top: 0, behavior: 'smooth' });
+  else if (a === 'aller' && el.dataset.vue === S.vue) window.scrollTo({ top: 0, behavior: 'smooth' });
+  else if (a === 'aller') aller(el.dataset.vue);
   else if (a === 'fiche') ouvrirFiche(el.dataset.id);
   else if (a === 'connexion') connecter(false);
   else if (a === 'deconnexion') { if (confirm('Se déconnecter de ShowShow ?')) deconnecter(); }
@@ -908,6 +919,15 @@ document.addEventListener('focusout', e => {
     if (s && e.target.value !== String(s.notes || '')) majSuivi({ notes: e.target.value }, 'Notes enregistrées');
   }
 });
+
+/* ============ Bouton « haut de page » ============ */
+function majBoutonHaut() {
+  const b = document.getElementById('haut');
+  const visible = window.scrollY > 600;
+  b.classList.toggle('visible', visible);
+  b.tabIndex = visible ? 0 : -1;
+}
+window.addEventListener('scroll', majBoutonHaut, { passive: true });
 
 /* ============ Démarrage ============ */
 function ecranErreur(texte) {

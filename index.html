@@ -219,6 +219,23 @@ const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août'
 const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
+/* ============ Version ============ */
+const VERSION = '1.5';
+/** Si une version plus récente est en ligne, recharge la page (le téléphone garde parfois l'ancienne en mémoire). */
+async function verifierVersion() {
+  try {
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const v = (await r.json()).version;
+    const deja = sessionStorage.getItem('ss_recharge');
+    if (v && v !== VERSION && deja !== v) {
+      sessionStorage.setItem('ss_recharge', v);
+      location.reload();
+    }
+  } catch (_) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verifierVersion(); });
+
 /* ============ Google : connexion ============ */
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 const PORTEE = 'https://www.googleapis.com/auth/drive.file openid email profile';
@@ -537,7 +554,7 @@ function vueAccueil() {
         <button class="lien" style="align-self:flex-start" data-action="deconnexion">Se déconnecter</button>`
       : `<p class="meta" style="margin:0">Se connecter avec un compte Google pour suivre ses séries. La sélection est rangée dans un fichier de son propre Google Drive.</p>
         <button class="btn principal" data-action="connexion">Se connecter avec Google</button>`}
-      <p class="meta" style="margin:0;font-size:11.5px">Catalogue : ${S.catalogue.length} titres, mis à jour chaque semaine. Affiches : TMDB.</p>
+      <p class="meta" style="margin:0;font-size:11.5px">Catalogue : ${S.catalogue.length} titres, mis à jour chaque semaine. Affiches : TMDB. Version ${VERSION}.</p>
     </section>
   </main>`;
 }
@@ -1023,6 +1040,7 @@ function ecranErreur(texte) {
   document.getElementById('app').innerHTML = '<div class="chargement"><span class="logo">ShowShow</span><div class="filet-signature"></div><p class="meta" style="text-align:center;padding:0 30px">' + esc(texte) + '</p></div>';
 }
 async function demarrer() {
+  verifierVersion();
   recupererRetourGoogle();
   S.compte = lireJSON(CLE.compte);
   if (S.erreurConnexion === 'access_denied') toast('Connexion annulée.');

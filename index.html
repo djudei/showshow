@@ -169,6 +169,9 @@ textarea.notes:focus { border-color: var(--accent); }
 .haut.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .haut svg { width: 20px; height: 20px; }
 
+/* Confettis */
+.confetti { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 20; will-change: transform, opacity; }
+
 /* Message bref */
 .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); background: var(--encre); color: var(--sur-encre); padding: 12px 18px; font-size: 13px; max-width: calc(100% - 40px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 10; }
 .toast.visible { opacity: 1; transform: translate(-50%, 0); }
@@ -484,6 +487,7 @@ function rendre() {
   if (!S.catalogue.length) return;
   app.innerHTML = vues[S.vue]();
   setTimeout(majBoutonHaut, 0);
+  if (S.apres) { const f = S.apres; S.apres = null; requestAnimationFrame(f); }
   document.getElementById('onglets').hidden = S.vue === 'fiche';
   document.querySelectorAll('.onglets button').forEach(b => {
     const actif = b.dataset.vue === S.vue;
@@ -633,12 +637,12 @@ function vueFiche() {
       ${serie ? `
       <div class="compteur">
         <span class="intitule" style="letter-spacing:.2em">Saison</span>
-        <span style="display:flex;align-items:center;gap:14px"><span class="valeur">${saison}${nbS ? '<span class="meta" style="font-family:var(--sans);font-size:13px"> / ' + nbS + '</span>' : ''}</span>
+        <span style="display:flex;align-items:center;gap:14px"><span class="valeur" data-anim="saison">${saison}${nbS ? '<span class="meta" style="font-family:var(--sans);font-size:13px"> / ' + nbS + '</span>' : ''}</span>
         <span class="boutons"><button class="btn-carre" aria-label="Saison précédente" data-action="prog" data-champ="s" data-pas="-1" ${saison <= 1 ? 'disabled' : ''}>−</button><button class="btn-carre" aria-label="Saison suivante" data-action="prog" data-champ="s" data-pas="1" ${nbS && saison >= nbS ? 'disabled' : ''}>+</button></span></span>
       </div>
       <div class="compteur">
         <span class="intitule" style="letter-spacing:.2em">Épisode vu</span>
-        <span style="display:flex;align-items:center;gap:14px"><span class="valeur">${ep}${maxE ? '<span class="meta" style="font-family:var(--sans);font-size:13px"> / ' + maxE + '</span>' : ''}</span>
+        <span style="display:flex;align-items:center;gap:14px"><span class="valeur" data-anim="ep">${ep}${maxE ? '<span class="meta" style="font-family:var(--sans);font-size:13px"> / ' + maxE + '</span>' : ''}</span>
         <span class="boutons"><button class="btn-carre" aria-label="Épisode précédent" data-action="prog" data-champ="e" data-pas="-1" ${ep <= 0 ? 'disabled' : ''}>−</button><button class="btn-carre" aria-label="Épisode suivant" data-action="prog" data-champ="e" data-pas="1" ${maxE && ep >= maxE ? 'disabled' : ''}>+</button></span></span>
       </div>` : ''}
       <div class="compteur">
@@ -816,7 +820,11 @@ function basculer(id) {
     S.selection = S.selection.filter(s => s.id !== id);
     sauvegarder();
     toast('« ' + t.titre + ' » retiré de la sélection');
-  } else ajouterLocal(id);
+  } else {
+    const point = centre(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.id === id ? document.activeElement : document.querySelector('[data-action="basculer"][data-id="' + id + '"]'));
+    S.apres = () => { rebond('[data-action="basculer"][data-id="' + id + '"]', 1.25); confettis(point, 14, .5); };
+    ajouterLocal(id);
+  }
   rendre();
 }
 
@@ -852,13 +860,27 @@ document.addEventListener('click', e => {
   else if (a === 'cat-sel') { S.catSel = el.dataset.cat; rendre(); }
   else if (a === 'vue-sel') { S.vueSel = el.dataset.v; rendre(); }
   else if (a === 'statut' && s) {
+    const point = centre(el), st = el.dataset.statut;
+    S.apres = () => {
+      rebond('[data-action="statut"][data-statut="' + st + '"]');
+      if (st === 'Terminée') confettis(point, 60, 1.15);
+      else if (st === 'À jour') confettis(point, 26, .8);
+    };
     const champs = { statut: el.dataset.statut };
     if (el.dataset.statut === 'Terminée' && !s.dateFin) champs.dateFin = aujourdhuiISO();
     majSuivi(champs);
   }
   else if (a === 'note' && s) {
     const n = +el.dataset.note;
-    majSuivi({ note: (+s.note === n) ? '' : String(n) });
+    const nouvelle = (+s.note === n) ? 0 : n;
+    S.apres = () => {
+      for (let i = 1; i <= nouvelle; i++) rebond('[data-action="note"][data-note="' + i + '"] span', 1.45, 0);
+      document.querySelectorAll('[data-action="note"] span.plein').forEach((p, i) => {
+        if (!SANS_MOUVEMENT) p.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.5)' }, { transform: 'scale(1)' }], { duration: 360, delay: i * 70, easing: 'ease-out' });
+      });
+      if (nouvelle === 5) confettis(centre(document.querySelector('[data-action="note"][data-note="5"]')), 30, .8);
+    };
+    majSuivi({ note: nouvelle ? String(nouvelle) : '' });
   }
   else if (a === 'prog' && s) {
     let { s: saison, e: ep } = lireProgression(s.progression);
@@ -875,6 +897,8 @@ document.addEventListener('click', e => {
     }
     const champs = { progression: ecrireProgression(saison, ep) };
     if (s.statut === 'À voir' && ep > 0) champs.statut = 'En cours';
+    const cible = el.dataset.champ === 's' ? '[data-anim="saison"]' : '[data-anim="ep"]';
+    S.apres = () => compteur(cible);
     majSuivi(champs);
   }
   else if (a === 'vu' && s && t) {
@@ -895,8 +919,17 @@ document.addEventListener('click', e => {
         if (!vivante && !s.dateFin) champs.dateFin = aujourdhuiISO();
         msg = vivante ? 'Dernier épisode disponible vu : statut « À jour »' : 'Série terminée';
       } else if (s.statut !== 'En cours') champs.statut = 'En cours';
+      const point = centre(el);
+      const changeSaison = !lireProgression(s.progression).s || saison !== lireProgression(s.progression).s;
+      S.apres = () => {
+        compteur(changeSaison ? '[data-anim="saison"]' : '[data-anim="ep"]');
+        rebond('[data-action="vu"]', 1.04);
+        if (derniere) confettis(point, champs.statut === 'Terminée' ? 60 : 30, champs.statut === 'Terminée' ? 1.15 : .85);
+      };
       majSuivi(champs, msg);
     } else {
+      const point = centre(el);
+      S.apres = () => { rebond('[data-action="statut"][data-statut="Terminée"]'); confettis(point, 60, 1.15); };
       majSuivi({ statut: 'Terminée', dateFin: aujourdhuiISO() }, 'Marqué comme vu');
     }
   }
@@ -919,6 +952,62 @@ document.addEventListener('focusout', e => {
     if (s && e.target.value !== String(s.notes || '')) majSuivi({ notes: e.target.value }, 'Notes enregistrées');
   }
 });
+
+/* ============ Animations ============ */
+const SANS_MOUVEMENT = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function couleur(nom) { return getComputedStyle(document.documentElement).getPropertyValue(nom).trim(); }
+function centre(el) {
+  if (!el) return { x: innerWidth / 2, y: innerHeight / 2 };
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+/** Confettis géométriques (ronds, carrés, demi-disques) qui partent d'un point. */
+function confettis(point, nombre, force) {
+  if (SANS_MOUVEMENT) return;
+  nombre = nombre || 40; force = force || 1;
+  const teintes = [couleur('--accent'), couleur('--accent'), couleur('--encre'), couleur('--doux'), couleur('--bord')];
+  for (let i = 0; i < nombre; i++) {
+    const el = document.createElement('span');
+    el.className = 'confetti';
+    const taille = 5 + Math.random() * 6;
+    const forme = Math.random();
+    el.style.width = taille + 'px';
+    el.style.height = taille + 'px';
+    const teinte = teintes[i % teintes.length];
+    if (forme < 0.4) { el.style.background = teinte; el.style.borderRadius = '50%'; }
+    else if (forme < 0.75) el.style.background = teinte;
+    else { el.style.background = 'linear-gradient(90deg,' + teinte + ' 50%, transparent 50%)'; el.style.borderRadius = '50%'; }
+    document.body.appendChild(el);
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3;
+    const vitesse = (120 + Math.random() * 200) * force;
+    const dx = Math.cos(angle) * vitesse, dy = Math.sin(angle) * vitesse;
+    const tour = (Math.random() - 0.5) * 720;
+    const x0 = point.x - taille / 2, y0 = point.y - taille / 2;
+    el.animate([
+      { transform: `translate(${x0}px, ${y0}px) rotate(0deg) scale(.6)`, opacity: 1 },
+      { transform: `translate(${x0 + dx}px, ${y0 + dy}px) rotate(${tour}deg) scale(1)`, opacity: 1, offset: 0.55 },
+      { transform: `translate(${x0 + dx * 1.15}px, ${y0 + dy + 260}px) rotate(${tour * 1.6}deg) scale(.9)`, opacity: 0 }
+    ], { duration: 1100 + Math.random() * 600, easing: 'cubic-bezier(.15,.7,.35,1)' }).onfinish = () => el.remove();
+  }
+}
+/** Petit rebond d'un ou plusieurs éléments (sélecteur CSS). */
+function rebond(selecteur, amplitude, delai) {
+  if (SANS_MOUVEMENT) return;
+  document.querySelectorAll(selecteur).forEach((el, i) => {
+    const a = amplitude || 1.18;
+    el.animate([
+      { transform: 'scale(1)' }, { transform: `scale(${a})` }, { transform: 'scale(.94)' }, { transform: 'scale(1.03)' }, { transform: 'scale(1)' }
+    ], { duration: 480, delay: (delai || 0) * i, easing: 'ease-out' });
+  });
+}
+/** Le chiffre monte, comme un compteur qui tourne. */
+function compteur(selecteur) {
+  if (SANS_MOUVEMENT) return;
+  const el = document.querySelector(selecteur);
+  if (el) el.animate([
+    { transform: 'translateY(60%)', opacity: 0 }, { transform: 'translateY(-8%)', opacity: 1, offset: .7 }, { transform: 'translateY(0)', opacity: 1 }
+  ], { duration: 380, easing: 'ease-out' });
+}
 
 /* ============ Bouton « haut de page » ============ */
 function majBoutonHaut() {

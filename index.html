@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>ShowShow</title>
+<meta name="description" content="Suivre les séries, docus et films Apple TV.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/icone-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ShowShow">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script src="config.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F5F2ED">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<style>
+:root {
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'Jost', -apple-system, system-ui, sans-serif;
+  --fond: #F5F2ED; --carte: #FBF9F6; --encre: #2B2723; --doux: #6E6152;
+  --trait: #DED6CA; --bord: #9C8F80; --accent: #B0306A; --accent-fond: #F5E4EC;
+  --ok: #3F6B4A; --danger: #9A3B2E; --sur-encre: #F5F2ED;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #171513; --carte: #211E1B; --encre: #EFE9E1; --doux: #B3A796;
+    --trait: #36312C; --bord: #857A6D; --accent: #E46A9E; --accent-fond: #3A1E2B;
+    --ok: #8DBB98; --danger: #F08A7E; --sur-encre: #1C1A18;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--fond); color: var(--encre); font-family: var(--sans); font-weight: 400; }
+body { min-height: 100vh; }
+button, input, select, textarea { font-family: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3 { font-weight: 500; margin: 0; }
+
+.app { max-width: 520px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+.ecran { flex: 1; padding: 44px 20px calc(110px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 28px; }
+
+.serif { font-family: var(--serif); font-weight: 500; }
+.intitule { font-size: 11px; font-weight: 500; letter-spacing: 0.24em; text-transform: uppercase; color: var(--doux); margin: 0; }
+.meta { font-size: 13px; font-weight: 300; color: var(--doux); }
+.petit-statut { font-size: 10px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--doux); }
+.filet-signature { width: 40px; height: 2px; background: var(--accent); }
+
+.logo { font-family: var(--serif); font-weight: 500; font-size: 52px; line-height: 1; letter-spacing: -0.01em; }
+.titre-ecran { font-family: var(--serif); font-size: 34px; line-height: 1; }
+
+.icone-btn { width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: inline-flex; align-items: center; justify-content: center; color: var(--encre); }
+.icone-btn svg { width: 22px; height: 22px; }
+
+/* Lignes de liste */
+.liste { display: flex; flex-direction: column; }
+.ligne { display: flex; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--trait); }
+.ligne-clic { flex: 1; min-width: 0; display: flex; gap: 14px; align-items: center; background: transparent; border: 0; padding: 0; text-align: left; }
+.ligne-clic:active { opacity: .7; }
+.ligne-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ligne-titre { font-family: var(--serif); font-weight: 500; font-size: 19px; line-height: 1.15; }
+
+/* Affiches */
+.affiche { flex: none; width: 40px; height: 60px; background: var(--carte); border: 1px solid var(--trait); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 16px; color: var(--doux); overflow: hidden; }
+.affiche img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.affiche.moyenne { width: 44px; height: 66px; font-size: 18px; }
+.affiche.grande { width: 92px; height: 138px; font-size: 30px; }
+
+/* Barre de progression */
+.barre { height: 2px; background: var(--trait); margin-top: 4px; }
+.barre > div { height: 2px; background: var(--encre); }
+
+/* Boutons */
+.btn { min-height: 54px; width: 100%; border: 0; border-radius: 0; text-transform: uppercase; letter-spacing: 0.2em; font-size: 12.5px; font-weight: 500; transition: transform .1s; }
+.btn:active { transform: scale(.97); }
+.btn.principal { background: var(--encre); color: var(--sur-encre); }
+.btn.secondaire { background: transparent; color: var(--encre); border: 1px solid var(--bord); min-height: 48px; }
+.btn-carre { width: 44px; height: 44px; flex: none; border: 1px solid var(--bord); background: transparent; color: var(--encre); display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.btn-carre.plein { background: var(--encre); border-color: var(--encre); color: var(--sur-encre); }
+.btn-carre svg { width: 18px; height: 18px; }
+.lien { background: none; border: 0; padding: 0; color: var(--encre); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: .3em; font-size: 13px; min-height: 44px; }
+
+/* Sélecteur à segments */
+.segments { display: grid; border: 1px solid var(--encre); }
+.segments button { min-height: 44px; border: 0; background: transparent; font-size: 10.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; padding: 0 2px; }
+.segments button + button { border-left: 1px solid var(--encre); }
+.segments button.actif { background: var(--accent); color: var(--sur-encre); }
+@media (prefers-color-scheme: dark) { .segments button.actif { color: #171513; } }
+
+/* Puces */
+.puces { display: flex; gap: 8px; overflow-x: auto; margin: 0 -20px; padding: 0 20px; scrollbar-width: none; }
+.puces::-webkit-scrollbar { display: none; }
+.puce { flex: none; min-height: 34px; padding: 0 14px; border: 1px solid var(--trait); background: transparent; font-size: 12px; white-space: nowrap; }
+.puce.actif { border-color: var(--accent); background: var(--accent-fond); }
+
+/* Champ */
+.champ { display: flex; flex-direction: column; gap: 6px; }
+.champ-ligne { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--bord); padding-bottom: 8px; }
+.champ-ligne:focus-within { border-bottom-color: var(--accent); }
+.champ input, .champ textarea { flex: 1; border: 0; background: transparent; font-size: 15px; font-weight: 300; outline: none; min-height: 28px; }
+textarea.notes { width: 100%; border: 1px solid var(--trait); background: var(--carte); padding: 10px 12px; font-size: 14px; font-weight: 300; resize: vertical; min-height: 70px; outline: none; border-radius: 0; }
+textarea.notes:focus { border-color: var(--accent); }
+
+/* Barre d'outils de tri */
+.outils { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--trait); border-bottom: 1px solid var(--trait); }
+.tri { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.tri select { border: 0; background: transparent; font-size: 13px; padding: 0; appearance: none; -webkit-appearance: none; outline: none; }
+
+/* Pastille */
+.pastille { min-width: 22px; height: 22px; border-radius: 11px; background: var(--accent); color: var(--sur-encre); font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; }
+@media (prefers-color-scheme: dark) { .pastille { color: #171513; } }
+
+/* Glyphes de statut */
+.glyphe { width: 10px; height: 10px; flex: none; display: inline-block; }
+.g-avoir { background: var(--accent); border-radius: 5px; }
+.g-encours { border-radius: 5px; background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
+.g-ajour { background: var(--encre); border-radius: 5px; }
+.g-terminee { background: var(--encre); }
+.g-abandon { border: 1px solid var(--bord); }
+
+/* Points de note */
+.points { display: flex; gap: 3px; flex: none; }
+.points span { width: 7px; height: 7px; border-radius: 4px; border: 1px solid var(--bord); }
+.points span.plein { background: var(--encre); border-color: var(--encre); }
+
+/* Grille d'affiches */
+.grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 12px; }
+.grille button { background: none; border: 0; padding: 0; text-align: left; display: flex; flex-direction: column; gap: 6px; }
+.grille .affiche { width: 100%; height: auto; aspect-ratio: 2 / 3; font-size: 24px; }
+.grille .serif { font-size: 15px; line-height: 1.15; }
+
+/* Agenda */
+.agenda-date { width: 58px; flex: none; font-family: var(--serif); font-size: 24px; line-height: 1; }
+.agenda-date small { display: block; font-family: var(--sans); font-size: 10px; letter-spacing: .2em; color: var(--doux); margin-top: 4px; }
+
+/* Fiche */
+.fiche-tete { display: flex; gap: 18px; align-items: flex-end; }
+.bandeau { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid var(--trait); border-bottom: 1px solid var(--trait); padding: 11px 0; }
+.pitch { margin: 0; font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 21px; line-height: 1.3; }
+.infos { margin: 0; display: grid; grid-template-columns: 96px 1fr; row-gap: 10px; column-gap: 12px; font-size: 13px; }
+.infos dt { font-size: 10.5px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--doux); padding-top: 2px; }
+.infos dd { margin: 0; font-weight: 300; }
+.compteur { display: flex; justify-content: space-between; align-items: center; }
+.compteur .valeur { font-family: var(--serif); font-size: 22px; }
+.compteur .boutons { display: flex; }
+.compteur .boutons button + button { border-left: 0; }
+.note-points { display: flex; gap: 2px; }
+.note-points button { width: 38px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; }
+.note-points span { width: 16px; height: 16px; border-radius: 8px; border: 1px solid var(--bord); }
+.note-points span.plein { background: var(--encre); border-color: var(--encre); }
+
+/* Barre du haut de fiche, toujours visible */
+.barre-haut { position: sticky; top: 0; z-index: 4; background: var(--fond); margin: 0 -20px; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid transparent; }
+.btn-carre:disabled { opacity: .3; cursor: default; }
+.maj { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--trait); padding-top: 18px; }
+.maj .btn { min-height: 48px; }
+.maj .btn:disabled { opacity: .5; }
+
+/* Barre d'onglets */
+.onglets { position: fixed; left: 0; right: 0; bottom: 0; background: var(--fond); border-top: 1px solid var(--trait); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+.onglets-in { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.onglets button { background: none; border: 0; border-top: 2px solid transparent; margin-top: -1px; padding: 11px 0 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--doux); }
+.onglets button svg { width: 22px; height: 22px; }
+.onglets button.actif { color: var(--encre); border-top-color: var(--accent); }
+
+/* Message bref */
+.toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); background: var(--encre); color: var(--sur-encre); padding: 12px 18px; font-size: 13px; max-width: calc(100% - 40px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 10; }
+.toast.visible { opacity: 1; transform: translate(-50%, 0); }
+
+.vide { font-size: 14px; font-weight: 300; color: var(--doux); padding: 14px 0; border-bottom: 1px solid var(--trait); margin: 0; }
+.chargement { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="chargement">
+    <span class="logo">ShowShow</span>
+    <div class="filet-signature"></div>
+    <span class="intitule">Chargement</span>
+  </div>
+</div>
+<nav class="onglets" id="onglets" aria-label="Navigation principale" hidden>
+  <div class="onglets-in">
+    <button data-action="aller" data-vue="accueil">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 10.5L12 4l9 6.5V20H3z"/><path d="M9.5 20v-6h5v6"/></svg>Accueil</button>
+    <button data-action="aller" data-vue="catalogue">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="3" y="4" width="7" height="10"/><rect x="14" y="4" width="7" height="10"/><path d="M3 18h18M3 21h12"/></svg>Catalogue</button>
+    <button data-action="aller" data-vue="selection">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>Sélection</button>
+  </div>
+</nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ============ État ============ */
+const S = {
+  catalogue: [], selection: [],
+  vue: 'accueil', precedente: 'accueil', ficheId: null,
+  cat: 'Série', recherche: '', genre: '', triCat: 'recent',
+  filtreSel: 'Tout', triSel: 'sortie', vueSel: 'liste',
+  defilement: {}, connecte: false, compte: null, fichier: '', chargementSel: false, erreurConnexion: ''
+};
+const CATEGORIES = [['Série', 'Séries'], ['Docu', 'Docus'], ['Film', 'Films'], ['Enfant', 'Enfants']];
+const STATUTS = ['À voir', 'En cours', 'À jour', 'Terminée'];
+const GLYPHES = { 'À voir': 'g-avoir', 'En cours': 'g-encours', 'À jour': 'g-ajour', 'Terminée': 'g-terminee', 'Abandonnée': 'g-abandon' };
+const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+/* ============ Google : connexion ============ */
+const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
+const PORTEE = 'https://www.googleapis.com/auth/drive.file openid email profile';
+const CLE = { auth: 'ss_auth', compte: 'ss_compte', fichier: 'ss_fichier', catalogue: 'ss_catalogue', attente: 'ss_attente' };
+const NOM_FICHIER = 'ShowShow – Ma sélection';
+const ONGLET = 'Sélection';
+const ENTETES = ['ID', 'Titre', 'Ajouté le', 'Mon statut', 'Progression', 'Ma note (/5)', 'Date fin visionnage', 'Notes perso'];
+const ONGLETS = { 'Séries': 'Série', 'Docu': 'Docu', 'Films': 'Film', 'Enfant': 'Enfant' };
+
+const urlRetour = () => location.origin + location.pathname;
+const lireJSON = (cle, stock) => { try { return JSON.parse((stock || localStorage).getItem(cle) || 'null'); } catch (_) { return null; } };
+function lireJeton() {
+  const a = lireJSON(CLE.auth);
+  return a && a.exp > Date.now() + 60000 ? a.jeton : null;
+}
+function essaiRecent() { return Date.now() - (+sessionStorage.getItem('ss_essai') || 0) < 60000; }
+
+/** Part chez Google ; silencieux = sans écran si le consentement existe déjà. */
+function connecter(silencieux) {
+  sessionStorage.setItem('ss_etat', JSON.stringify({ vue: S.vue, ficheId: S.ficheId, precedente: S.precedente, cat: S.cat, filtreSel: S.filtreSel }));
+  if (silencieux) sessionStorage.setItem('ss_essai', String(Date.now()));
+  const p = new URLSearchParams({
+    client_id: CONFIG.clientId, redirect_uri: urlRetour(), response_type: 'token',
+    scope: PORTEE, include_granted_scopes: 'true', prompt: silencieux ? 'none' : 'select_account'
+  });
+  if (S.compte && S.compte.email) p.set('login_hint', S.compte.email);
+  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + p.toString();
+}
+function reconnecter() {
+  if (essaiRecent()) { S.connecte = false; rendre(); toast('Connexion à renouveler.'); }
+  else connecter(true);
+}
+function deconnecter() {
+  const jeton = lireJeton();
+  [CLE.auth, CLE.compte, CLE.fichier, CLE.attente].forEach(k => localStorage.removeItem(k));
+  if (jeton) fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(jeton), { method: 'POST' }).catch(() => {});
+  Object.assign(S, { connecte: false, compte: null, fichier: '', selection: [] });
+  rendre();
+  toast('Déconnecté');
+}
+function recupererRetourGoogle() {
+  if (!location.hash || location.hash.length < 2) return;
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('access_token')) {
+    localStorage.setItem(CLE.auth, JSON.stringify({ jeton: h.get('access_token'), exp: Date.now() + (+h.get('expires_in') || 3600) * 1000 }));
+    sessionStorage.removeItem('ss_essai');
+  } else if (h.get('error')) S.erreurConnexion = h.get('error');
+  history.replaceState(null, '', urlRetour());
+  const etat = lireJSON('ss_etat', sessionStorage);
+  if (etat) Object.assign(S, etat);
+  sessionStorage.removeItem('ss_etat');
+}
+async function api(url, options) {
+  options = options || {};
+  const jeton = lireJeton();
+  if (!jeton) throw Object.assign(new Error('Non connecté'), { code: 401 });
+  const r = await fetch(url, Object.assign({}, options, { headers: Object.assign({ Authorization: 'Bearer ' + jeton, 'Content-Type': 'application/json' }, options.headers || {}) }));
+  if (r.status === 401) { localStorage.removeItem(CLE.auth); throw Object.assign(new Error('Session expirée'), { code: 401 }); }
+  if (!r.ok) throw Object.assign(new Error('Erreur ' + r.status), { code: r.status });
+  return r.status === 204 ? null : r.json();
+}
+
+/* ============ Catalogue (Sheet commun, lecture seule) ============ */
+function versISO(v) {
+  if (typeof v === 'number' && v > 20000) {
+    const d = new Date(Math.round((v - 25569) * 86400000));
+    return d.toISOString().slice(0, 10);
+  }
+  return v === undefined || v === null ? '' : String(v);
+}
+async function chargerCatalogue() {
+  const plages = Object.keys(ONGLETS).map(o => 'ranges=' + encodeURIComponent(o)).join('&');
+  const r = await fetch(SHEETS + '/' + CONFIG.catalogueId + '/values:batchGet?' + plages +
+    '&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER&key=' + encodeURIComponent(CONFIG.apiKey));
+  if (!r.ok) throw new Error('Catalogue indisponible (' + r.status + ')');
+  const d = await r.json();
+  const catalogue = [];
+  (d.valueRanges || []).forEach((vr, k) => {
+    const categorie = ONGLETS[Object.keys(ONGLETS)[k]];
+    const v = vr.values || [];
+    const h = v[0] || [];
+    for (let i = 1; i < v.length; i++) {
+      const o = {};
+      h.forEach((c, j) => { o[c] = v[i][j] === undefined ? '' : v[i][j]; });
+      if (!o['ID']) continue;
+      const lire = cles => { for (const c of cles) if (c in o) return o[c]; return ''; };
+      catalogue.push({
+        id: String(o['ID']), titre: String(o['Titre']), original: String(o['Titre original'] || ''),
+        categorie: categorie, type: String(o['Type'] || ''), genre: String(o['Genre'] || ''), pays: String(o['Pays / langue'] || ''),
+        creation: String(lire(['Création', 'Réalisation']) || ''), acteurs: String(lire(['Acteurs principaux', 'Voix / acteurs']) || ''),
+        date: versISO(lire(['Première diffusion', 'Sortie Apple TV'])),
+        saisons: o['Nb saisons'], episodes: o['Nb épisodes'],
+        statut: String(lire(['Statut série', 'Statut']) || ''), prochaine: String(lire(['Prochaine saison', 'Suite annoncée']) || ''),
+        pitch: String(o['Pitch'] || ''), affiche: String(o['Affiche (URL)'] || ''), eps: String(o['Épisodes par saison'] || '')
+      });
+    }
+  });
+  return catalogue;
+}
+
+/* ============ Ma sélection (fichier dans le Drive de chacun) ============ */
+async function trouverFichier() {
+  const memo = localStorage.getItem(CLE.fichier);
+  if (memo) {
+    try { await api(SHEETS + '/' + memo + '?fields=spreadsheetId'); return memo; }
+    catch (e) { if (e.code === 401) throw e; }
+  }
+  const q = encodeURIComponent("name='" + NOM_FICHIER + "' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
+  const r = await api('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id)&orderBy=createdTime');
+  let id = r.files && r.files.length ? r.files[0].id : '';
+  if (!id) {
+    const f = await api(SHEETS, { method: 'POST', body: JSON.stringify({
+      properties: { title: NOM_FICHIER, locale: 'fr_FR' },
+      sheets: [{ properties: { title: ONGLET, gridProperties: { frozenRowCount: 1 } } }]
+    }) });
+    id = f.spreadsheetId;
+    await api(SHEETS + '/' + id + '/values/' + encodeURIComponent(ONGLET + '!A1:H1') + '?valueInputOption=RAW',
+      { method: 'PUT', body: JSON.stringify({ values: [ENTETES] }) });
+    S.nouveauFichier = true;
+  }
+  localStorage.setItem(CLE.fichier, id);
+  return id;
+}
+async function lireSelectionDrive() {
+  const r = await api(SHEETS + '/' + S.fichier + '/values/' + encodeURIComponent(ONGLET + '!A2:H'));
+  return (r.values || []).filter(l => l[0]).map(l => ({
+    id: String(l[0]), ajoute: l[2] || '', statut: l[3] || 'À voir', progression: l[4] || '',
+    note: l[5] || '', dateFin: l[6] || '', notes: l[7] || ''
+  }));
+}
+let minuterie = null, file = Promise.resolve(), lignesEcrites = 0;
+function sauvegarder() {
+  localStorage.setItem(CLE.attente, JSON.stringify(S.selection));
+  clearTimeout(minuterie);
+  minuterie = setTimeout(() => { file = file.then(ecrireSelection); }, 400);
+}
+async function ecrireSelection() {
+  const lignes = S.selection.map(s => {
+    const t = parId(s.id);
+    return [s.id, t ? t.titre : '', s.ajoute || '', s.statut || 'À voir', s.progression || '',
+      s.note === '' || s.note == null ? '' : String(s.note), s.dateFin || '', s.notes || ''];
+  });
+  try {
+    await api(SHEETS + '/' + S.fichier + '/values/' + encodeURIComponent(ONGLET + '!A1:H' + (lignes.length + 1)) + '?valueInputOption=RAW',
+      { method: 'PUT', body: JSON.stringify({ values: [ENTETES].concat(lignes) }) });
+    const avant = lignesEcrites;
+    lignesEcrites = lignes.length;
+    if (avant > lignes.length) {
+      await api(SHEETS + '/' + S.fichier + '/values/' + encodeURIComponent(ONGLET + '!A' + (lignes.length + 2) + ':H' + (avant + 1)) + ':clear',
+        { method: 'POST', body: '{}' });
+    }
+    localStorage.removeItem(CLE.attente);
+  } catch (e) {
+    if (e.code === 401) { toast('Reconnexion…'); setTimeout(reconnecter, 700); }
+    else toast('Enregistrement impossible pour le moment : nouvel essai à la prochaine action.');
+  }
+}
+async function ouvrirSession() {
+  S.chargementSel = true;
+  rendre();
+  try {
+    if (!S.compte) {
+      const u = await api('https://openidconnect.googleapis.com/v1/userinfo');
+      S.compte = { email: u.email || '', prenom: u.given_name || u.name || '' };
+      localStorage.setItem(CLE.compte, JSON.stringify(S.compte));
+    }
+    S.fichier = await trouverFichier();
+    const enLigne = await lireSelectionDrive();
+    lignesEcrites = enLigne.length;
+    const attente = lireJSON(CLE.attente);
+    S.selection = attente || enLigne;
+    S.connecte = true;
+    if (attente) sauvegarder();
+    const ajout = sessionStorage.getItem('ss_ajout');
+    sessionStorage.removeItem('ss_ajout');
+    if (ajout && parId(ajout) && !suiviDe(ajout)) ajouterLocal(ajout);
+    if (S.nouveauFichier) toast('Bienvenue' + (S.compte.prenom ? ' ' + S.compte.prenom : '') + '. La sélection est rangée dans Google Drive.');
+  } catch (e) {
+    console.error(e);
+    if (e.code === 401) { S.chargementSel = false; reconnecter(); return; }
+    toast('Google Drive ne répond pas pour le moment. Recharger la page dans un instant.');
+  }
+  S.chargementSel = false;
+  rendre();
+}
+
+/* ============ Outils ============ */
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const parId = id => S.catalogue.find(t => t.id === id);
+const suiviDe = id => S.selection.find(s => s.id === id);
+const estSerie = t => !/film|spécial/i.test(String(t.type));
+
+function initiales(titre) {
+  const mots = String(titre).replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).filter(Boolean);
+  if (!mots.length) return '·';
+  if (mots.length === 1) return mots[0].slice(0, 2);
+  return (mots[0][0] + mots[1][0]).toUpperCase();
+}
+function affiche(t, taille) {
+  const cls = 'affiche' + (taille ? ' ' + taille : '');
+  if (t && t.affiche) return `<span class="${cls}"><img src="${esc(t.affiche)}" alt="" loading="lazy"></span>`;
+  return `<span class="${cls}" aria-hidden="true">${esc(initiales(t ? t.titre : ''))}</span>`;
+}
+function annee(t) { return String(t.date || '').slice(0, 4); }
+function premierGenre(t) { return String(t.genre || '').split('/')[0].trim(); }
+function lireProgression(p) {
+  const m = /S\s*(\d+)\D+(\d+)/i.exec(String(p || ''));
+  return m ? { s: +m[1], e: +m[2] } : { s: 1, e: 0 };
+}
+const ecrireProgression = (s, e) => 'S' + s + ' E' + e;
+function texteProgression(p, t) {
+  const { s, e } = lireProgression(p);
+  if (!e) return 'Pas encore commencé';
+  let txt = 'Saison ' + s + ' · épisode ' + e;
+  const max = maxEpisodes(t, s);
+  if (max) txt += ' sur ' + max;
+  return txt;
+}
+function fraction(p, t) {
+  const { s, e } = lireProgression(p);
+  if (+t.saisons === 1 && +t.episodes && e) return Math.min(1, e / +t.episodes);
+  return null;
+}
+/** Nombre d'épisodes par saison, d'après TMDB (« 10,8,6 »). */
+function episodesParSaison(t) {
+  if (!t.eps) return [];
+  return String(t.eps).split(',').map(n => parseInt(n, 10) || 0);
+}
+// Le nombre de saisons du Sheet fait foi ; TMDB ne sert que pour les épisodes de chaque saison.
+function nbSaisons(t) { return +t.saisons || episodesParSaison(t).length || 0; }
+function maxEpisodes(t, saison) {
+  const n = episodesParSaison(t)[saison - 1];
+  if (n > 1) return n;                         // 0 ou 1 = donnée TMDB incomplète : pas de limite
+  if (+t.saisons === 1 && +t.episodes) return +t.episodes;
+  return 0;
+}
+function dateDuJour() {
+  const d = new Date();
+  return JOURS[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_LONGS[d.getMonth()] + ' ' + d.getFullYear();
+}
+function aujourdhuiISO() { const d = new Date(); return d.toISOString().slice(0, 10); }
+/** Cherche une date « 2 déc. 2026 » ou « 22 janv. 2027 » dans un texte. */
+function dateDans(texte) {
+  const m = /(\d{1,2})\s+(janv|févr|mars|avr|mai|juin|juil|août|sept|oct|nov|déc)\.?\s*(\d{4})?/i.exec(String(texte || ''));
+  if (!m) return null;
+  const mois = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'].indexOf(m[2].toLowerCase());
+  const an = m[3] ? +m[3] : new Date().getFullYear();
+  return { jour: +m[1], mois: mois, an: an, tri: an * 10000 + mois * 100 + +m[1] };
+}
+function toast(texte) {
+  const el = document.getElementById('toast');
+  el.textContent = texte;
+  el.classList.add('visible');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => el.classList.remove('visible'), 2600);
+}
+function erreur(e) {
+  console.error(e);
+  toast('Google ne répond pas pour le moment. Réessayer dans un instant.');
+}
+
+/* ============ Rendu ============ */
+function rendre() {
+  const app = document.getElementById('app');
+  const vues = { accueil: vueAccueil, catalogue: vueCatalogue, fiche: vueFiche, selection: vueSelection };
+  if (!S.catalogue.length) return;
+  app.innerHTML = vues[S.vue]();
+  document.getElementById('onglets').hidden = S.vue === 'fiche';
+  document.querySelectorAll('.onglets button').forEach(b => {
+    const actif = b.dataset.vue === S.vue;
+    b.classList.toggle('actif', actif);
+    if (actif) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+}
+
+function vueAccueil() {
+  const auj = aujourdhuiISO();
+  const avecDate = S.catalogue.filter(t => /^\d{4}-\d{2}-\d{2}$/.test(String(t.date)));
+  const recents = avecDate.filter(t => t.date <= auj).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
+  const prochains = avecDate.filter(t => t.date > auj).sort((a, b) => a.date.localeCompare(b.date));
+  const nbAffiches = S.catalogue.filter(t => t.affiche).length;
+  const ligneDatee = t => {
+    const [an, mo, jo] = t.date.split('-').map(Number);
+    return `<div class="ligne" style="align-items:center">
+      <span class="agenda-date">${jo}<small>${MOIS[mo - 1].toUpperCase()}${an !== new Date().getFullYear() ? ' ' + an : ''}</small></span>
+      <button class="ligne-clic" data-action="fiche" data-id="${esc(t.id)}">
+        ${affiche(t)}
+        <span class="ligne-texte">
+          <span class="ligne-titre">${esc(t.titre)}</span>
+          <span class="petit-statut">${esc(t.categorie === 'Enfant' ? 'Enfants' : t.categorie)} · ${esc(premierGenre(t))}</span>
+        </span>
+      </button>
+      ${boutonSelection(t)}
+    </div>`;
+  };
+  return `<main class="ecran">
+    <header style="display:flex;flex-direction:column;gap:10px">
+      <h1 class="logo">ShowShow</h1>
+      <div class="filet-signature"></div>
+    </header>
+    ${prochains.length ? `<section>
+      <h2 class="intitule" style="margin-bottom:6px">Bientôt sur Apple TV</h2>
+      <div class="liste">${prochains.map(ligneDatee).join('')}</div>
+    </section>` : ''}
+    <section>
+      <h2 class="intitule" style="margin-bottom:6px">Récemment sur Apple TV</h2>
+      <div class="liste">${recents.map(ligneDatee).join('')}</div>
+    </section>
+    <section class="maj">
+      <h2 class="intitule">Compte</h2>
+      ${S.connecte && S.compte ? `
+        <p class="meta" style="margin:0">Connecté : ${esc(S.compte.email)}</p>
+        <a class="btn secondaire" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="https://docs.google.com/spreadsheets/d/${esc(S.fichier)}" target="_blank" rel="noopener">Ouvrir le fichier de sélection</a>
+        <button class="lien" style="align-self:flex-start" data-action="deconnexion">Se déconnecter</button>`
+      : `<p class="meta" style="margin:0">Se connecter avec un compte Google pour suivre ses séries. La sélection est rangée dans un fichier de son propre Google Drive.</p>
+        <button class="btn principal" data-action="connexion">Se connecter avec Google</button>`}
+      <p class="meta" style="margin:0;font-size:11.5px">Catalogue : ${S.catalogue.length} titres, mis à jour chaque semaine. Affiches : TMDB.</p>
+    </section>
+  </main>`;
+}
+
+function boutonSelection(t) {
+  return suiviDe(t.id)
+    ? `<button class="btn-carre plein" aria-label="Retirer ${esc(t.titre)} de ma sélection" data-action="basculer" data-id="${esc(t.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>`
+    : `<button class="btn-carre" aria-label="Ajouter ${esc(t.titre)} à ma sélection" data-action="basculer" data-id="${esc(t.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>`;
+}
+
+function ligneCatalogue(t) {
+  const bits = [annee(t), premierGenre(t), t.saisons ? t.saisons + (+t.saisons > 1 ? ' saisons' : ' saison') : ''].filter(Boolean);
+  return `<div class="ligne">
+    <button class="ligne-clic" data-action="fiche" data-id="${esc(t.id)}">
+      ${affiche(t)}
+      <span class="ligne-texte">
+        <span class="ligne-titre">${esc(t.titre)}</span>
+        <span class="meta" style="font-size:12.5px">${esc(bits.join(' · '))}</span>
+        ${t.statut && t.statut !== 'Film' ? `<span class="petit-statut">${esc(t.statut)}</span>` : ''}
+      </span>
+    </button>
+    ${boutonSelection(t)}
+  </div>`;
+}
+
+function titresFiltres() {
+  const q = S.recherche.trim().toLowerCase();
+  let liste = S.catalogue.filter(t => t.categorie === S.cat);
+  if (S.genre) liste = liste.filter(t => String(t.genre).toLowerCase().includes(S.genre.toLowerCase()));
+  if (q) liste = liste.filter(t => [t.titre, t.original, t.acteurs, t.creation].join(' ').toLowerCase().includes(q));
+  const cle = t => String(t.date || '9999');
+  liste.sort((a, b) => S.triCat === 'ancien' ? cle(a).localeCompare(cle(b)) : cle(b).localeCompare(cle(a)));
+  return liste;
+}
+function genresDe(cat) {
+  const compte = {};
+  S.catalogue.filter(t => t.categorie === cat).forEach(t =>
+    String(t.genre || '').split(/[\/,]/).map(g => g.trim()).filter(Boolean).forEach(g => {
+      const cle = g.charAt(0).toUpperCase() + g.slice(1);
+      compte[cle] = (compte[cle] || 0) + 1;
+    }));
+  return Object.entries(compte).sort((a, b) => b[1] - a[1]).slice(0, 10).map(e => e[0]);
+}
+
+function resultatsCatalogue() {
+  const liste = titresFiltres();
+  const nomCat = CATEGORIES.find(c => c[0] === S.cat)[1].toLowerCase();
+  return `<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--trait)">
+      <span class="intitule" style="letter-spacing:.22em">${liste.length} ${liste.length > 1 ? nomCat : nomCat.replace(/s$/, '')}</span>
+      <button class="lien" style="text-decoration:none;color:var(--doux);font-weight:300;font-size:12.5px" data-action="tri-cat">Sortie : ${S.triCat === 'ancien' ? 'plus anciennes' : 'plus récentes'} ⇅</button>
+    </div>
+    <div class="liste" style="margin-top:-18px">${liste.length ? liste.map(ligneCatalogue).join('') : '<p class="vide">Aucun titre ne correspond.</p>'}</div>`;
+}
+
+function vueCatalogue() {
+  return `<main class="ecran" style="gap:18px">
+    <h1 class="titre-ecran serif">Catalogue</h1>
+    <div class="champ">
+      <label class="intitule" for="recherche" style="letter-spacing:.22em">Rechercher</label>
+      <div class="champ-ligne">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--doux)" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+        <input id="recherche" type="search" placeholder="Titre, acteur, création…" value="${esc(S.recherche)}" data-input="recherche" autocomplete="off">
+      </div>
+    </div>
+    <div class="segments" role="tablist" aria-label="Catégories" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+      ${CATEGORIES.map(([c, l]) => `<button role="tab" aria-selected="${c === S.cat}" class="${c === S.cat ? 'actif' : ''}" data-action="cat" data-cat="${c}">${l}</button>`).join('')}
+    </div>
+    <div class="puces">
+      <button class="puce ${!S.genre ? 'actif' : ''}" data-action="genre" data-genre="">Tous</button>
+      ${genresDe(S.cat).map(g => `<button class="puce ${S.genre === g ? 'actif' : ''}" data-action="genre" data-genre="${esc(g)}">${esc(g)}</button>`).join('')}
+    </div>
+    <div id="resultats" style="display:flex;flex-direction:column;gap:18px">${resultatsCatalogue()}</div>
+  </main>`;
+}
+
+function vueFiche() {
+  const t = parId(S.ficheId);
+  if (!t) return '<main class="ecran"><p class="vide">Titre introuvable.</p></main>';
+  const s = suiviDe(t.id);
+  const serie = estSerie(t);
+  const details = [annee(t),
+    t.saisons ? t.saisons + (+t.saisons > 1 ? ' saisons' : ' saison') : '',
+    t.episodes ? t.episodes + ' épisodes' : ''].filter(Boolean).join(' · ');
+  const surTitre = [premierGenre(t), String(t.pays || '').split('/')[0].trim()].filter(Boolean).join(' · ');
+
+  let suivi = '';
+  if (s) {
+    const { s: saison, e: ep } = lireProgression(s.progression);
+    const note = +s.note || 0;
+    const nbS = nbSaisons(t);
+    const maxE = maxEpisodes(t, saison);
+    suivi = `<section style="display:flex;flex-direction:column;gap:14px;border-top:1px solid var(--trait);padding-top:18px">
+      <h2 class="intitule">Mon suivi</h2>
+      <div class="segments" role="radiogroup" aria-label="Mon statut" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        ${STATUTS.map(st => `<button role="radio" aria-checked="${s.statut === st}" class="${s.statut === st ? 'actif' : ''}" data-action="statut" data-statut="${st}">${st}</button>`).join('')}
+      </div>
+      ${serie ? `
+      <div class="compteur">
+        <span class="intitule" style="letter-spacing:.2em">Saison</span>
+        <span style="display:flex;align-items:center;gap:14px"><span class="valeur">${saison}${nbS ? '<span class="meta" style="font-family:var(--sans);font-size:13px"> / ' + nbS + '</span>' : ''}</span>
+        <span class="boutons"><button class="btn-carre" aria-label="Saison précédente" data-action="prog" data-champ="s" data-pas="-1" ${saison <= 1 ? 'disabled' : ''}>−</button><button class="btn-carre" aria-label="Saison suivante" data-action="prog" data-champ="s" data-pas="1" ${nbS && saison >= nbS ? 'disabled' : ''}>+</button></span></span>
+      </div>
+      <div class="compteur">
+        <span class="intitule" style="letter-spacing:.2em">Épisode vu</span>
+        <span style="display:flex;align-items:center;gap:14px"><span class="valeur">${ep}${maxE ? '<span class="meta" style="font-family:var(--sans);font-size:13px"> / ' + maxE + '</span>' : ''}</span>
+        <span class="boutons"><button class="btn-carre" aria-label="Épisode précédent" data-action="prog" data-champ="e" data-pas="-1" ${ep <= 0 ? 'disabled' : ''}>−</button><button class="btn-carre" aria-label="Épisode suivant" data-action="prog" data-champ="e" data-pas="1" ${maxE && ep >= maxE ? 'disabled' : ''}>+</button></span></span>
+      </div>` : ''}
+      <div class="compteur">
+        <span class="intitule" style="letter-spacing:.2em">Ma note</span>
+        <span class="note-points" role="radiogroup" aria-label="Ma note sur 5">
+          ${[1, 2, 3, 4, 5].map(n => `<button role="radio" aria-checked="${note === n}" aria-label="${n} sur 5" data-action="note" data-note="${n}"><span class="${n <= note ? 'plein' : ''}"></span></button>`).join('')}
+        </span>
+      </div>
+      <div class="champ">
+        <label class="intitule" for="notes" style="letter-spacing:.2em">Notes perso</label>
+        <textarea id="notes" class="notes" data-blur="notes" placeholder="Avec qui, conseillé par qui…">${esc(s.notes)}</textarea>
+      </div>
+      ${s.dateFin ? `<p class="meta" style="margin:0">Terminé le ${esc(formatDate(s.dateFin))}</p>` : ''}
+    </section>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${s.statut !== 'Terminée' ? `<button class="btn principal" data-action="vu">${serie ? "Marquer l'épisode vu" : 'Marquer comme vu'}</button>` : ''}
+      <div style="display:flex;justify-content:space-between">
+        ${s.statut !== 'Abandonnée' ? '<button class="lien" data-action="statut" data-statut="Abandonnée">Abandonner</button>' : '<span></span>'}
+        <button class="lien" data-action="retirer">Retirer de la sélection</button>
+      </div>
+    </div>`;
+  } else {
+    suivi = `<button class="btn principal" data-action="basculer" data-id="${esc(t.id)}">Ajouter à ma sélection</button>`;
+  }
+
+  return `<main class="ecran" style="gap:20px;padding-top:0;padding-bottom:calc(40px + env(safe-area-inset-bottom))">
+    <div class="barre-haut">
+      <button class="icone-btn" style="justify-content:flex-start" aria-label="Retour" data-action="retour">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <span class="intitule">${esc(t.categorie === 'Enfant' ? 'Enfants' : t.categorie)}</span>
+      <span style="width:44px"></span>
+    </div>
+    <div class="fiche-tete">
+      ${affiche(t, 'grande')}
+      <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+        <h1 class="serif" style="font-size:32px;line-height:1">${esc(t.titre)}</h1>
+        ${t.original && t.original !== t.titre ? `<span class="meta" style="font-style:italic">${esc(t.original)}</span>` : ''}
+        ${surTitre ? `<span class="intitule" style="letter-spacing:.2em">${esc(surTitre)}</span>` : ''}
+        ${details ? `<span class="meta">${esc(details)}</span>` : ''}
+      </div>
+    </div>
+    ${t.statut && t.statut !== 'Film' ? `<div class="bandeau">
+      <span style="font-size:11px;font-weight:500;letter-spacing:.2em;text-transform:uppercase">${esc(t.statut)}</span>
+      ${t.prochaine ? `<span class="meta" style="font-size:12.5px;text-align:right">${esc(t.prochaine)}</span>` : ''}
+    </div>` : ''}
+    ${t.pitch ? `<p class="pitch">${esc(t.pitch)}</p>` : ''}
+    <dl class="infos">
+      ${t.creation ? `<dt>${t.categorie === 'Film' ? 'Réalisation' : 'Création'}</dt><dd>${esc(t.creation)}</dd>` : ''}
+      ${t.acteurs ? `<dt>Avec</dt><dd>${esc(t.acteurs)}</dd>` : ''}
+      ${t.pays ? `<dt>Pays</dt><dd>${esc(t.pays)}</dd>` : ''}
+      ${t.date ? `<dt>Sortie</dt><dd>${esc(formatDate(t.date))}</dd>` : ''}
+    </dl>
+    ${suivi}
+    <button class="btn secondaire" data-action="retour">${{ selection: 'Retour à ma sélection', catalogue: 'Retour au catalogue', accueil: "Retour à l'accueil" }[S.precedente] || 'Retour'}</button>
+  </main>`;
+}
+
+function formatDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+  if (!m) return String(iso);
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return JOURS[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_LONGS[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function vueSelection() {
+  if (!S.connecte) {
+    return `<main class="ecran" style="gap:18px">
+      <h1 class="titre-ecran serif">Ma Sélection</h1>
+      ${S.chargementSel ? '<p class="vide">Chargement de la sélection…</p>' : `
+      <p class="pitch" style="font-size:20px">Garder la trace de ce qui est vu, en cours ou à voir.</p>
+      <p class="meta" style="margin:0">La connexion se fait avec un compte Google. ShowShow crée un seul fichier dans son Google Drive et n'a accès à rien d'autre.</p>
+      <button class="btn principal" data-action="connexion">Se connecter avec Google</button>`}
+    </main>`;
+  }
+  const filtres = ['Tout', 'En cours', 'À voir', 'À jour', 'Terminée', 'Abandonnée'];
+  const compte = f => f === 'Tout' ? S.selection.length : S.selection.filter(s => s.statut === f).length;
+  let lignes = S.selection.map(s => ({ s, t: parId(s.id) })).filter(x => x.t);
+  if (S.filtreSel !== 'Tout') lignes = lignes.filter(x => x.s.statut === S.filtreSel);
+  const tris = {
+    ajout: (a, b) => String(b.s.ajoute).localeCompare(String(a.s.ajoute)),
+    titre: (a, b) => String(a.t.titre).localeCompare(String(b.t.titre), 'fr'),
+    note: (a, b) => (+b.s.note || 0) - (+a.s.note || 0),
+    statut: (a, b) => STATUTS.concat('Abandonnée').indexOf(a.s.statut) - STATUTS.concat('Abandonnée').indexOf(b.s.statut),
+    categorie: (a, b) => String(a.t.categorie).localeCompare(String(b.t.categorie), 'fr'),
+    sortie: (a, b) => String(b.t.date).localeCompare(String(a.t.date))
+  };
+  lignes.sort(tris[S.triSel]);
+  const options = [['ajout', "Date d'ajout"], ['titre', 'Titre'], ['note', 'Ma note'], ['statut', 'Mon statut'], ['categorie', 'Catégorie'], ['sortie', 'Date de sortie']];
+
+  const contenu = !lignes.length
+    ? `<p class="vide">${S.selection.length ? 'Aucun titre avec ce statut.' : 'Sélection vide. Ajouter des titres depuis le catalogue avec le bouton +.'}</p>`
+    : S.vueSel === 'grille'
+      ? `<div class="grille" style="margin-top:4px">${lignes.map(({ t }) => `<button data-action="fiche" data-id="${esc(t.id)}">${affiche(t)}<span class="serif">${esc(t.titre)}</span></button>`).join('')}</div>`
+      : `<div class="liste" style="margin-top:-18px">${lignes.map(({ s, t }) => {
+          const note = +s.note || 0;
+          const statutTexte = s.statut === 'En cours' && estSerie(t) && lireProgression(s.progression).e
+            ? 'En cours · S' + lireProgression(s.progression).s + ' E' + lireProgression(s.progression).e : s.statut;
+          return `<div class="ligne"><button class="ligne-clic" data-action="fiche" data-id="${esc(t.id)}">
+            ${affiche(t)}
+            <span class="ligne-texte">
+              <span class="ligne-titre">${esc(t.titre)}</span>
+              <span class="petit-statut">${esc(t.categorie)} · ${esc(premierGenre(t))}</span>
+              <span style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:300"><span class="glyphe ${GLYPHES[s.statut] || 'g-avoir'}"></span>${esc(statutTexte)}</span>
+            </span>
+            <span class="points" aria-label="${note ? 'Note ' + note + ' sur 5' : 'Pas encore noté'}">${[1, 2, 3, 4, 5].map(n => `<span class="${n <= note ? 'plein' : ''}"></span>`).join('')}</span>
+          </button></div>`;
+        }).join('')}</div>`;
+
+  return `<main class="ecran" style="gap:18px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <h1 class="titre-ecran serif">Ma Sélection</h1>
+      <span class="serif" style="font-size:22px;color:var(--doux)">${S.selection.length}</span>
+    </div>
+    <div class="puces">
+      ${filtres.filter(f => f === 'Tout' || compte(f)).map(f => `<button class="puce ${S.filtreSel === f ? 'actif' : ''}" data-action="filtre-sel" data-filtre="${f}">${f}${f !== 'Tout' ? ' · ' + compte(f) : ''}</button>`).join('')}
+    </div>
+    <div class="outils">
+      <label class="tri">
+        <span class="intitule" style="font-size:10.5px;letter-spacing:.2em">Trier par</span>
+        <select data-change="tri-sel">${options.map(([v, l]) => `<option value="${v}" ${S.triSel === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </label>
+      <span style="display:flex">
+        <button class="icone-btn" aria-label="Vue liste" aria-pressed="${S.vueSel === 'liste'}" style="color:${S.vueSel === 'liste' ? 'var(--encre)' : 'var(--bord)'}" data-action="vue-sel" data-v="liste">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="width:20px;height:20px"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <button class="icone-btn" aria-label="Vue affiches" aria-pressed="${S.vueSel === 'grille'}" style="color:${S.vueSel === 'grille' ? 'var(--encre)' : 'var(--bord)'}" data-action="vue-sel" data-v="grille">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="width:20px;height:20px"><rect x="4" y="3" width="6.5" height="8"/><rect x="13.5" y="3" width="6.5" height="8"/><rect x="4" y="13" width="6.5" height="8"/><rect x="13.5" y="13" width="6.5" height="8"/></svg></button>
+      </span>
+    </div>
+    ${contenu}
+  </main>`;
+}
+
+/* ============ Actions ============ */
+function aller(vue) {
+  if (S.vue !== 'fiche') S.defilement[S.vue] = window.scrollY;
+  if (vue !== 'fiche') S.precedente = vue;
+  S.vue = vue;
+  rendre();
+  window.scrollTo(0, S.defilement[vue] || 0);
+}
+function ouvrirFiche(id) {
+  S.defilement[S.vue] = window.scrollY;
+  if (S.vue !== 'fiche') S.precedente = S.vue;
+  S.ficheId = id;
+  S.vue = 'fiche';
+  rendre();
+  window.scrollTo(0, 0);
+}
+
+function ajouterLocal(id) {
+  S.selection = S.selection.concat({ id: id, statut: 'À voir', ajoute: aujourdhuiISO(), progression: '', note: '', notes: '', dateFin: '' });
+  sauvegarder();
+  const t = parId(id);
+  toast('« ' + (t ? t.titre : id) + ' » ajouté à la sélection');
+}
+function basculer(id) {
+  if (!S.connecte) {
+    if (S.chargementSel) return;
+    sessionStorage.setItem('ss_ajout', id);
+    connecter(false);
+    return;
+  }
+  const t = parId(id);
+  const deja = suiviDe(id);
+  if (deja) {
+    if ((deja.statut !== 'À voir' || deja.note || deja.notes || deja.progression) &&
+        !confirm('Retirer « ' + t.titre + ' » et son suivi de la sélection ?')) return;
+    S.selection = S.selection.filter(s => s.id !== id);
+    sauvegarder();
+    toast('« ' + t.titre + ' » retiré de la sélection');
+  } else ajouterLocal(id);
+  rendre();
+}
+
+function majSuivi(champs, message) {
+  const s = suiviDe(S.ficheId);
+  if (!s) return;
+  Object.assign(s, champs);
+  sauvegarder();
+  rendre();
+  if (message) toast(message);
+}
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const a = el.dataset.action;
+  const s = suiviDe(S.ficheId);
+  const t = parId(S.ficheId);
+
+  if (a === 'aller') aller(el.dataset.vue);
+  else if (a === 'fiche') ouvrirFiche(el.dataset.id);
+  else if (a === 'connexion') connecter(false);
+  else if (a === 'deconnexion') { if (confirm('Se déconnecter de ShowShow ?')) deconnecter(); }
+  else if (a === 'retour') { S.vue = 'fiche'; aller(S.precedente); }
+  else if (a === 'chercher') { aller('catalogue'); setTimeout(() => { const i = document.getElementById('recherche'); if (i) i.focus(); }, 50); }
+    else if (a === 'basculer') basculer(el.dataset.id);
+  else if (a === 'cat') { S.cat = el.dataset.cat; S.genre = ''; rendre(); }
+  else if (a === 'genre') { S.genre = el.dataset.genre; rendre(); }
+  else if (a === 'tri-cat') { S.triCat = S.triCat === 'ancien' ? 'recent' : 'ancien'; rendre(); }
+  else if (a === 'filtre-sel') { S.filtreSel = el.dataset.filtre; rendre(); }
+  else if (a === 'vue-sel') { S.vueSel = el.dataset.v; rendre(); }
+  else if (a === 'statut' && s) {
+    const champs = { statut: el.dataset.statut };
+    if (el.dataset.statut === 'Terminée' && !s.dateFin) champs.dateFin = aujourdhuiISO();
+    majSuivi(champs);
+  }
+  else if (a === 'note' && s) {
+    const n = +el.dataset.note;
+    majSuivi({ note: (+s.note === n) ? '' : String(n) });
+  }
+  else if (a === 'prog' && s) {
+    let { s: saison, e: ep } = lireProgression(s.progression);
+    const pas = +el.dataset.pas;
+    const nbS = nbSaisons(t);
+    if (el.dataset.champ === 's') {
+      saison = Math.max(1, saison + pas);
+      if (nbS) saison = Math.min(nbS, saison);
+      ep = pas > 0 ? 0 : Math.min(ep, maxEpisodes(t, saison) || ep);
+    } else {
+      ep = Math.max(0, ep + pas);
+      const max = maxEpisodes(t, saison);
+      if (max) ep = Math.min(max, ep);
+    }
+    const champs = { progression: ecrireProgression(saison, ep) };
+    if (s.statut === 'À voir' && ep > 0) champs.statut = 'En cours';
+    majSuivi(champs);
+  }
+  else if (a === 'vu' && s && t) {
+    if (estSerie(t)) {
+      let { s: saison, e: ep } = lireProgression(s.progression);
+      const nbS = nbSaisons(t);
+      const max = maxEpisodes(t, saison);
+      if (max && ep >= max) {
+        if (nbS && saison < nbS) { saison += 1; ep = 1; }
+        else { ep = max; }
+      } else ep += 1;
+      const champs = { progression: ecrireProgression(saison, ep) };
+      const derniere = nbS && saison >= nbS && maxEpisodes(t, saison) && ep >= maxEpisodes(t, saison);
+      let msg = 'Saison ' + saison + ' · épisode ' + ep + ' vu';
+      if (derniere) {
+        const vivante = ['En cours de diffusion', 'Renouvelée', 'À venir', 'En attente'].indexOf(t.statut) >= 0;
+        champs.statut = vivante ? 'À jour' : 'Terminée';
+        if (!vivante && !s.dateFin) champs.dateFin = aujourdhuiISO();
+        msg = vivante ? 'Dernier épisode disponible vu : statut « À jour »' : 'Série terminée';
+      } else if (s.statut !== 'En cours') champs.statut = 'En cours';
+      majSuivi(champs, msg);
+    } else {
+      majSuivi({ statut: 'Terminée', dateFin: aujourdhuiISO() }, 'Marqué comme vu');
+    }
+  }
+  else if (a === 'retirer' && t) basculer(t.id);
+});
+
+document.addEventListener('input', e => {
+  if (e.target.dataset.input === 'recherche') {
+    S.recherche = e.target.value;
+    const zone = document.getElementById('resultats');
+    if (zone) zone.innerHTML = resultatsCatalogue();
+  }
+});
+document.addEventListener('change', e => {
+  if (e.target.dataset.change === 'tri-sel') { S.triSel = e.target.value; rendre(); }
+});
+document.addEventListener('focusout', e => {
+  if (e.target.dataset.blur === 'notes') {
+    const s = suiviDe(S.ficheId);
+    if (s && e.target.value !== String(s.notes || '')) majSuivi({ notes: e.target.value }, 'Notes enregistrées');
+  }
+});
+
+/* ============ Démarrage ============ */
+function ecranErreur(texte) {
+  document.getElementById('app').innerHTML = '<div class="chargement"><span class="logo">ShowShow</span><div class="filet-signature"></div><p class="meta" style="text-align:center;padding:0 30px">' + esc(texte) + '</p></div>';
+}
+async function demarrer() {
+  recupererRetourGoogle();
+  S.compte = lireJSON(CLE.compte);
+  if (S.erreurConnexion === 'access_denied') toast('Connexion annulée.');
+
+  const cache = lireJSON(CLE.catalogue);
+  if (cache && cache.data) { S.catalogue = cache.data; rendre(); }
+
+  if (!lireJeton() && S.compte && !S.erreurConnexion && !essaiRecent()) { connecter(true); return; }
+
+  const promesseCatalogue = chargerCatalogue().then(c => {
+    S.catalogue = c;
+    try { localStorage.setItem(CLE.catalogue, JSON.stringify({ t: Date.now(), data: c })); } catch (_) {}
+  });
+  if (lireJeton()) promesseCatalogue.catch(() => {}).then(ouvrirSession);
+  try { await promesseCatalogue; }
+  catch (e) {
+    console.error(e);
+    if (!S.catalogue.length) { ecranErreur('Le catalogue ne répond pas pour le moment. Recharger la page dans un instant.'); return; }
+  }
+  rendre();
+}
+demarrer();
+</script>
+</body>
+</html>

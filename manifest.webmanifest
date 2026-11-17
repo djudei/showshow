@@ -1,0 +1,16 @@
+{
+  "name": "ShowShow",
+  "short_name": "ShowShow",
+  "description": "Suivre les séries, docus et films Apple TV.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F5F2ED",
+  "theme_color": "#F5F2ED",
+  "icons": [
+    { "src": "icons/icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icone-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

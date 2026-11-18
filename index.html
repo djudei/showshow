@@ -118,6 +118,7 @@ textarea.notes:focus { border-color: var(--accent); }
 .g-ajour { background: var(--encre); border-radius: 5px; }
 .g-terminee { background: var(--encre); }
 .g-abandon { border: 1px solid var(--bord); }
+.g-avenir { border: 1.5px solid var(--accent); border-radius: 5px; box-sizing: border-box; }
 
 /* Points de note */
 .points { display: flex; gap: 3px; flex: none; }
@@ -214,13 +215,14 @@ const S = {
 };
 const CATEGORIES = [['Série', 'Séries'], ['Docu', 'Docus'], ['Film', 'Films'], ['Enfant', 'Enfants']];
 const STATUTS = ['À voir', 'En cours', 'À jour', 'Terminée'];
-const GLYPHES = { 'À voir': 'g-avoir', 'En cours': 'g-encours', 'À jour': 'g-ajour', 'Terminée': 'g-terminee', 'Abandonnée': 'g-abandon' };
+const GLYPHES = { 'À voir': 'g-avoir', 'En cours': 'g-encours', 'À jour': 'g-ajour', 'Terminée': 'g-terminee', 'Abandonnée': 'g-abandon', 'À venir': 'g-avenir' };
+const ORDRE_STATUTS = ['À voir', 'À venir', 'En cours', 'À jour', 'Terminée', 'Abandonnée'];
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
 /* ============ Version ============ */
-const VERSION = '1.5';
+const VERSION = '1.6';
 /** Si une version plus récente est en ligne, recharge la page (le téléphone garde parfois l'ancienne en mémoire). */
 async function verifierVersion() {
   try {
@@ -329,7 +331,7 @@ async function chargerCatalogue() {
         date: versISO(lire(['Première diffusion', 'Sortie Apple TV'])),
         saisons: o['Nb saisons'], episodes: o['Nb épisodes'],
         statut: String(lire(['Statut série', 'Statut']) || ''), prochaine: String(lire(['Prochaine saison', 'Suite annoncée']) || ''),
-        pitch: String(o['Pitch'] || ''), affiche: String(o['Affiche (URL)'] || ''), eps: String(o['Épisodes par saison'] || '')
+        pitch: String(o['Pitch'] || ''), affiche: String(o['Affiche (URL)'] || ''), eps: String(o['Épisodes par saison'] || ''), epsOk: String(o['Épisodes (vérifiés)'] ?? '').trim()
       });
     }
   });
@@ -447,7 +449,7 @@ function lireProgression(p) {
 }
 const ecrireProgression = (s, e) => 'S' + s + ' E' + e;
 function texteProgression(p, t) {
-  const { s, e } = lireProgression(p);
+  const { s, e } = progressionBornee(p, t);
   if (!e) return 'Pas encore commencé';
   let txt = 'Saison ' + s + ' · épisode ' + e;
   const max = maxEpisodes(t, s);
@@ -459,19 +461,45 @@ function fraction(p, t) {
   if (+t.saisons === 1 && +t.episodes && e) return Math.min(1, e / +t.episodes);
   return null;
 }
-/** Nombre d'épisodes par saison, d'après TMDB (« 10,8,6 »). */
+/** Nombre d'épisodes par saison : colonne vérifiée en priorité, sinon TMDB (« 10,8,6 »). 0 = inconnu. */
 function episodesParSaison(t) {
-  if (!t.eps) return [];
-  return String(t.eps).split(',').map(n => parseInt(n, 10) || 0);
+  const src = t.epsOk || t.eps;
+  if (!src) return [];
+  return String(src).split(',').map(n => { const v = parseInt(n, 10) || 0; return v > 0 && v <= 60 ? v : 0; });
 }
-// Le nombre de saisons du Sheet fait foi ; TMDB ne sert que pour les épisodes de chaque saison.
-function nbSaisons(t) { return +t.saisons || episodesParSaison(t).length || 0; }
+// Le nombre de saisons du Sheet fait foi. Jamais illimité.
+function nbSaisons(t) {
+  const n = +t.saisons || episodesParSaison(t).length || 1;
+  return Math.max(1, Math.min(n, 40));
+}
+const PLAFOND_EPISODES = 26;
 function maxEpisodes(t, saison) {
-  const n = episodesParSaison(t)[saison - 1];
-  if (n > 1) return n;                         // 0 ou 1 = donnée TMDB incomplète : pas de limite
-  if (+t.saisons === 1 && +t.episodes) return +t.episodes;
-  return 0;
+  const liste = episodesParSaison(t);
+  const n = liste[saison - 1];
+  if (n && (t.epsOk || n > 1)) return n;                    // donnée fiable pour cette saison
+  const connues = liste.filter(v => v > 1);
+  if (connues.length) return Math.round(connues.reduce((a, b) => a + b, 0) / connues.length); // saison inconnue : moyenne des autres
+  const total = +t.episodes;
+  if (total > 0 && total <= 400) return Math.max(1, Math.ceil(total / nbSaisons(t)));
+  return PLAFOND_EPISODES;
 }
+/** Progression ramenée dans les limites réelles de la série. */
+function progressionBornee(p, t) {
+  let { s, e } = lireProgression(p);
+  s = Math.min(Math.max(1, s), nbSaisons(t));
+  e = Math.min(Math.max(0, e), maxEpisodes(t, s));
+  return { s, e };
+}
+/** Titre pas encore sorti : date de sortie dans le futur, ou statut « À venir » sans date. */
+function pasSorti(t) {
+  const d = String(t.date || '').trim();
+  const auj = aujourdhuiISO();
+  if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10) > auj;
+  if (/^\d{4}$/.test(d)) return +d > +auj.slice(0, 4);
+  return !d && t.statut === 'À venir';
+}
+/** Statut affiché : « À venir » tant qu'un titre « À voir » n'est pas sorti, puis bascule seul en « À voir ». */
+function statutAffiche(s, t) { return s.statut === 'À voir' && t && pasSorti(t) ? 'À venir' : s.statut; }
 function dateDuJour() {
   const d = new Date();
   return JOURS[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_LONGS[d.getMonth()] + ' ' + d.getFullYear();
@@ -642,14 +670,14 @@ function vueFiche() {
 
   let suivi = '';
   if (s) {
-    const { s: saison, e: ep } = lireProgression(s.progression);
+    const { s: saison, e: ep } = progressionBornee(s.progression, t);
     const note = +s.note || 0;
     const nbS = nbSaisons(t);
     const maxE = maxEpisodes(t, saison);
     suivi = `<section style="display:flex;flex-direction:column;gap:14px;border-top:1px solid var(--trait);padding-top:18px">
       <h2 class="intitule">Mon suivi</h2>
       <div class="segments" role="radiogroup" aria-label="Mon statut" style="grid-template-columns:repeat(4,minmax(0,1fr))">
-        ${STATUTS.map(st => `<button role="radio" aria-checked="${s.statut === st}" class="${s.statut === st ? 'actif' : ''}" data-action="statut" data-statut="${st}">${st}</button>`).join('')}
+        ${STATUTS.map(st => `<button role="radio" aria-checked="${s.statut === st}" class="${s.statut === st ? 'actif' : ''}" data-action="statut" data-statut="${st}">${st === 'À voir' && pasSorti(t) ? 'À venir' : st}</button>`).join('')}
       </div>
       ${serie ? `
       <div class="compteur">
@@ -735,17 +763,17 @@ function vueSelection() {
       <button class="btn principal" data-action="connexion">Se connecter avec Google</button>`}
     </main>`;
   }
-  const filtres = ['Tout', 'En cours', 'À voir', 'À jour', 'Terminée', 'Abandonnée'];
+  const filtres = ['Tout', 'En cours', 'À voir', 'À venir', 'À jour', 'Terminée', 'Abandonnée'];
   let lignes = S.selection.map(s => ({ s, t: parId(s.id) })).filter(x => x.t);
   if (S.catSel !== 'Tout') lignes = lignes.filter(x => x.t.categorie === S.catSel);
   const base = lignes;
-  const compte = f => f === 'Tout' ? base.length : base.filter(x => x.s.statut === f).length;
-  if (S.filtreSel !== 'Tout') lignes = lignes.filter(x => x.s.statut === S.filtreSel);
+  const compte = f => f === 'Tout' ? base.length : base.filter(x => statutAffiche(x.s, x.t) === f).length;
+  if (S.filtreSel !== 'Tout') lignes = lignes.filter(x => statutAffiche(x.s, x.t) === S.filtreSel);
   const tris = {
     ajout: (a, b) => String(b.s.ajoute).localeCompare(String(a.s.ajoute)),
     titre: (a, b) => String(a.t.titre).localeCompare(String(b.t.titre), 'fr'),
     note: (a, b) => (+b.s.note || 0) - (+a.s.note || 0),
-    statut: (a, b) => STATUTS.concat('Abandonnée').indexOf(a.s.statut) - STATUTS.concat('Abandonnée').indexOf(b.s.statut),
+    statut: (a, b) => ORDRE_STATUTS.indexOf(statutAffiche(a.s, a.t)) - ORDRE_STATUTS.indexOf(statutAffiche(b.s, b.t)),
     categorie: (a, b) => String(a.t.categorie).localeCompare(String(b.t.categorie), 'fr'),
     sortie: (a, b) => String(b.t.date).localeCompare(String(a.t.date))
   };
@@ -758,14 +786,16 @@ function vueSelection() {
       ? `<div class="grille" style="margin-top:4px">${lignes.map(({ t }) => `<button data-action="fiche" data-id="${esc(t.id)}">${affiche(t)}<span class="serif">${esc(t.titre)}</span></button>`).join('')}</div>`
       : `<div class="liste" style="margin-top:-18px">${lignes.map(({ s, t }) => {
           const note = +s.note || 0;
-          const statutTexte = s.statut === 'En cours' && estSerie(t) && lireProgression(s.progression).e
-            ? 'En cours · S' + lireProgression(s.progression).s + ' E' + lireProgression(s.progression).e : s.statut;
+          const pr = progressionBornee(s.progression, t);
+          const affiché = statutAffiche(s, t);
+          const statutTexte = s.statut === 'En cours' && estSerie(t) && pr.e ? 'En cours · S' + pr.s + ' E' + pr.e
+            : affiché === 'À venir' && t.date ? 'À venir · ' + formatDate(t.date) : affiché;
           return `<div class="ligne"><button class="ligne-clic" data-action="fiche" data-id="${esc(t.id)}">
             ${affiche(t)}
             <span class="ligne-texte">
               <span class="ligne-titre">${esc(t.titre)}</span>
               <span class="petit-statut">${esc(t.categorie)} · ${esc(premierGenre(t))}</span>
-              <span style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:300"><span class="glyphe ${GLYPHES[s.statut] || 'g-avoir'}"></span>${esc(statutTexte)}</span>
+              <span style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:300"><span class="glyphe ${GLYPHES[affiché] || 'g-avoir'}"></span>${esc(statutTexte)}</span>
             </span>
             <span class="points" aria-label="${note ? 'Note ' + note + ' sur 5' : 'Pas encore noté'}">${[1, 2, 3, 4, 5].map(n => `<span class="${n <= note ? 'plein' : ''}"></span>`).join('')}</span>
           </button></div>`;
@@ -900,17 +930,14 @@ document.addEventListener('click', e => {
     majSuivi({ note: nouvelle ? String(nouvelle) : '' });
   }
   else if (a === 'prog' && s) {
-    let { s: saison, e: ep } = lireProgression(s.progression);
+    let { s: saison, e: ep } = progressionBornee(s.progression, t);
     const pas = +el.dataset.pas;
     const nbS = nbSaisons(t);
     if (el.dataset.champ === 's') {
-      saison = Math.max(1, saison + pas);
-      if (nbS) saison = Math.min(nbS, saison);
-      ep = pas > 0 ? 0 : Math.min(ep, maxEpisodes(t, saison) || ep);
+      saison = Math.min(nbS, Math.max(1, saison + pas));
+      ep = pas > 0 ? 0 : Math.min(ep, maxEpisodes(t, saison));
     } else {
-      ep = Math.max(0, ep + pas);
-      const max = maxEpisodes(t, saison);
-      if (max) ep = Math.min(max, ep);
+      ep = Math.min(maxEpisodes(t, saison), Math.max(0, ep + pas));
     }
     const champs = { progression: ecrireProgression(saison, ep) };
     if (s.statut === 'À voir' && ep > 0) champs.statut = 'En cours';
@@ -920,15 +947,15 @@ document.addEventListener('click', e => {
   }
   else if (a === 'vu' && s && t) {
     if (estSerie(t)) {
-      let { s: saison, e: ep } = lireProgression(s.progression);
+      let { s: saison, e: ep } = progressionBornee(s.progression, t);
       const nbS = nbSaisons(t);
       const max = maxEpisodes(t, saison);
-      if (max && ep >= max) {
-        if (nbS && saison < nbS) { saison += 1; ep = 1; }
+      if (ep >= max) {
+        if (saison < nbS) { saison += 1; ep = 1; }
         else { ep = max; }
       } else ep += 1;
       const champs = { progression: ecrireProgression(saison, ep) };
-      const derniere = nbS && saison >= nbS && maxEpisodes(t, saison) && ep >= maxEpisodes(t, saison);
+      const derniere = saison >= nbS && ep >= maxEpisodes(t, saison);
       let msg = 'Saison ' + saison + ' · épisode ' + ep + ' vu';
       if (derniere) {
         const vivante = ['En cours de diffusion', 'Renouvelée', 'À venir', 'En attente'].indexOf(t.statut) >= 0;
